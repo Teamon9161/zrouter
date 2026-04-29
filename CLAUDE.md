@@ -8,32 +8,39 @@
 ## Critical Rules
 <!-- none yet -->
 
+## Supported Extraction
+- Project language: Zig.
+- zrouter summary support: supported for Zig and project metadata/config files.
+- zrouter outline support: supported for Zig; use `zrouter query <path> --outline` before `Read` when the one-line summary is too thin.
+- Function-level comments are not included in outline; use `Read` when docs or implementation details matter.
+
 ## zrouter
-- Reading an unknown file: first consult the loaded/current directory's `<!-- zr:files -->` block; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context.
+- Reading an unknown file: first consult the loaded/current directory's `<!-- zr:files -->` block; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context. If the one-line summary is too thin, use `zrouter query <path> --outline` before `Read`.
 - Editing in `<dir>/`: read `<dir>/CLAUDE.md` first; check `.memory/decisions.md` for ADRs and Do-Not-Repeat entries.
 - After editing: run `zrouter refresh <dir>` (or `zrouter refresh . -r --create` for hierarchy changes). Log decisions to `.memory/decisions.md`, patterns to `.memory/patterns.md`, guesses to `.memory/inbox.md`.
 - `<!-- zr:files -->` and `<!-- zr:routing -->` blocks are tool-managed; everything else is yours.
 
 <!-- zr:routing -->
+- [src/desc/](src/desc/CLAUDE.md)
 <!-- /zr:routing -->
 <!-- zr:files -->
 - `.gitattributes` —  (~5 tok)
 - `.gitignore` —  (~16 tok)
-- `PLAN.md` — zrouter 设计与实施计划 (~3252 tok)
+- `PLAN.md` — zrouter 设计与实施计划 (~4527 tok)
 - `build.zig` — pub fn build (~456 tok)
 - `build.zig.zon` — Zig package manifest (~1163 tok)
 - `install.ps1` —  (~1554 tok)
-- `install.sh` —  (~1228 tok)
+- `install.sh` — sh fn need_cmd, download, sha256_file, print_skill_guidance, install_zrouter_skill (~1228 tok)
 - `skill/`
-  - `SKILL.md` — zrouter (~2153 tok)
+  - `SKILL.md` — zrouter (~2583 tok)
   - `configuration.md` — zrouter configuration (~1212 tok)
-  - `templates.md` — zrouter templates (~796 tok)
+  - `templates.md` — zrouter templates (~937 tok)
 - `src/`
   - `assets/default.toml` — zrouter built-in defaults — embedded at compile time. (~926 tok)
   - `claude_md.zig` — pub fn replaceBlock, ensureBlock, removeBlock, buildFilesBlock, buildRoutingBlock (~1402 tok)
   - `config.zig` — pub fn load (~1770 tok)
-  - `desc.zig` — pub fn extract (~3842 tok)
-  - `main.zig` — pub fn main (~5670 tok)
+  - `desc.zig` — pub fn parseMode, extract, extractWithMode (~2422 tok)
+  - `main.zig` — pub fn main (~5994 tok)
   - `root.zig` —  (~51 tok)
-  - `walker.zig` — pub fn listFiles, listFilesForIndex (~4176 tok)
+  - `walker.zig` — pub fn listFiles, listFilesForIndex (~4282 tok)
 <!-- /zr:files -->

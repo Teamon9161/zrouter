@@ -15,8 +15,14 @@ Skeletons for files `init` creates. Brackets are filled in per project — don't
 ## Critical Rules
 <!-- ask the user during init; leave this comment if they have none -->
 
+## Supported Extraction
+- Project languages: [detected languages]
+- zrouter summary support: [supported / partial / unsupported]
+- zrouter outline support: [supported / partial / unsupported]
+- Use `zrouter query <path> --outline` before `Read` only for supported extensions; unsupported files may still return token count or a file header comment, but not reliable structure.
+
 ## zrouter
-- Reading an unknown file: first consult the loaded/current directory's `<!-- zr:files -->` block; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context.
+- Reading an unknown file: first consult the loaded/current directory's `<!-- zr:files -->` block; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context. If the one-line summary is too thin, use `zrouter query <path> --outline` before `Read`; outline shows the file header comment plus top-level structure/signatures, not function-level comments.
 - Editing in `<dir>/`: read `<dir>/CLAUDE.md` first; check `.memory/decisions.md` for ADRs and Do-Not-Repeat entries.
 - After editing: refresh that directory's files block. Log decisions to `.memory/decisions.md`, patterns to `.memory/patterns.md`, guesses to `.memory/inbox.md`.
 - `<!-- zr:files -->` and `<!-- zr:routing -->` blocks are tool-managed; everything else is yours.

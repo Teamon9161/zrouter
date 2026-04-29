@@ -1,0 +1,7 @@
+# zrouter built-in command output filters — embedded at compile time.
+# Add project-local filters in .zrouter/filters.toml (same format).
+schema_version = 1
+
+filters = [
+  {description = "anyzig version/appdata noise", match_command = "zig", strip_lines_matching = ["^anyzig: "]},
+]

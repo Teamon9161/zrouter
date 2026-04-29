@@ -12,7 +12,12 @@ The user types `init` once. Everything else — keeping the file index and routi
 
 ## The token-saving move
 
-Before opening an unfamiliar file, first consult the loaded/current directory's `<!-- zr:files -->` block. Use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context: file paths return one summary; directory paths return the filtered files/routes/inline_dirs index. Only `Read` the file when the summary is insufficient.
+Before opening an unfamiliar file, first consult the loaded/current directory's `<!-- zr:files -->` block. Use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context: file paths return one summary; directory paths return the filtered files/routes/inline_dirs index. If the summary is too thin, run `zrouter query <path> --outline` before `Read`: outline returns the file header comment plus top-level structure/signatures, but does not include function-level comments. Only `Read` the file when summary/outline are insufficient.
+
+Supported extraction:
+- Summary: Markdown, Zig, TypeScript/JavaScript, Python, Go, Rust, C/C++/Objective-C, Java, Ruby, Shell, JSON/TOML/YAML, plus generic leading comments.
+- Outline: Zig, TypeScript/JavaScript, Python, Go, Rust, C/C++/Objective-C, Java, Ruby, Shell, JSON/TOML/YAML, Markdown headings. Unsupported file types may still return a header comment/token count, but do not provide reliable structure.
+- Outline deliberately excludes function-level comments. Use `Read` when function docs or implementation details matter.
 
 ## Project layout
 
@@ -45,12 +50,13 @@ Outside the markers: human-owned; zrouter never touches.
 
 1. Detect stack from signature files (`build.zig`, `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, ...).
 2. Pre-fill the Stack section of root CLAUDE.md.
-3. **Ask** the user whether there are project-specific Critical Rules. Keep this section short, leave it empty if there are none, and don't repeat global agent instructions.
-4. Decide subdirectories. Greenfield (≤2 source dirs) → root only. Brownfield → use `zrouter refresh . -r --create` and review the generated indexes before writing human sections.
-5. Create `.memory/` skeletons.
-6. Populate files/routing blocks using the refresh logic below.
-7. Inspect `<!-- zr:files -->` blocks for irrelevant generated, fixture, cache, binary, vendored, or benchmark-data paths. If the index looks noisy, stop and suggest `.gitignore`, `exclude`, or `allow` changes; rerun refresh before writing Purpose/Conventions. Do not paper over noisy indexes with prose.
-8. For each newly created subdirectory CLAUDE.md whose generated index looks relevant, write human content **above** the `<!-- zr:files -->` marker: Purpose (always, one sentence); Conventions and Gotchas where there's anything worth knowing before touching files here — one bullet is enough. Skip a section only if there's truly nothing to add.
+3. Add a short Supported Extraction section to root CLAUDE.md based on the detected stack. If the project language is supported, mention `zrouter query <path> --outline` as a useful pre-read step. If it is not supported, say query is useful only for token count/header comments and skip outline unless the extension is supported.
+4. **Ask** the user whether there are project-specific Critical Rules. Keep this section short, leave it empty if there are none, and don't repeat global agent instructions.
+5. Decide subdirectories. Greenfield (≤2 source dirs) → root only. Brownfield → use `zrouter refresh . -r --create` and review the generated indexes before writing human sections.
+6. Create `.memory/` skeletons.
+7. Populate files/routing blocks using the refresh logic below.
+8. Inspect `<!-- zr:files -->` blocks for irrelevant generated, fixture, cache, binary, vendored, or benchmark-data paths. If the index looks noisy, stop and suggest `.gitignore`, `exclude`, or `allow` changes; rerun refresh before writing Purpose/Conventions. Do not paper over noisy indexes with prose.
+9. For each newly created subdirectory CLAUDE.md whose generated index looks relevant, write human content **above** the `<!-- zr:files -->` marker: Purpose (always, one sentence); Conventions and Gotchas where there's anything worth knowing before touching files here — one bullet is enough. Skip a section only if there's truly nothing to add.
 
 ### `deinit`
 
@@ -69,7 +75,7 @@ zrouter deinit -r --delete-file  Strip ./CLAUDE.md; delete all subdirectory CLAU
 - **After editing files in `<dir>/`** → run `zrouter refresh <dir>` to refresh that directory's files/routing blocks.
 - **After creating or deleting a `<dir>/CLAUDE.md`** → run `zrouter refresh <parent>` or `zrouter refresh . -r` to refresh routing.
 - **When bootstrapping an existing project** → run `zrouter refresh . -r --create`, then inspect generated CLAUDE.md files. If indexes include irrelevant paths, suggest ignore/config changes and refresh again before writing Purpose/Conventions.
-- **Before reading an unfamiliar file** → consult the loaded/current `<!-- zr:files -->` block first; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context. Query a directory when you need the local filtered index without reading another CLAUDE.md.
+- **Before reading an unfamiliar file** → consult the loaded/current `<!-- zr:files -->` block first; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context. If that is not enough, use `zrouter query <path> --outline` for the file header comment plus top-level structure/signatures. Query a directory when you need the local filtered index without reading another CLAUDE.md.
 
 ### How to refresh a files block
 
@@ -82,18 +88,20 @@ zrouter deinit -r --delete-file  Strip ./CLAUDE.md; delete all subdirectory CLAU
 
 ### How to refresh the routing block
 
-Between `<!-- zr:routing -->` markers, write one line per routed child CLAUDE.md, sorted by path. Apply `exclude`/`allow` gitignore-ish patterns. For `transparent_dirs` (`src`, `lib`, `app`, `pkg`, `cmd`, `internal` by default), skip the transparent directory itself and promote its children:
+Between `<!-- zr:routing -->` markers, write one line per routed child CLAUDE.md, sorted by path. Apply `exclude`/`allow` gitignore-ish patterns. For `transparent_dirs` (`src`, `lib`, `app`, `pkg`, `cmd`, `internal` by default), skip the transparent directory itself, inline only its direct files, and promote/judge its child directories separately:
 
 ```markdown
 - [src/bond/](src/bond/CLAUDE.md)
 - [src/future/](src/future/CLAUDE.md)
 ```
 
-Use `zrouter refresh <dir> -r --create` to create CLAUDE.md files for useful non-transparent directories whose filtered recursive file count exceeds `inline_max_files`; smaller subtrees are inlined into their nearest routed parent. Existing CLAUDE.md files always win over transparent-dir promotion.
+Use `zrouter refresh <dir> -r --create` to create CLAUDE.md files for useful non-transparent directories whose filtered recursive file count exceeds `inline_max_files`; smaller subtrees are inlined into their nearest routed parent. Existing CLAUDE.md files always win over transparent-dir promotion. If a transparent directory's direct files make the parent index too large, create a CLAUDE.md in that transparent directory or remove it from `transparent_dirs` with `!name`.
 
 ## What the file scan captures — and what it doesn't
 
 `zr:files` answers **what exists**: exported symbol names and token counts. It does not explain purpose, behaviour, or intent.
+
+`zrouter query <path> --outline` is the next step before `Read` when a one-line summary is not enough. It shows the file header comment and top-level structure/signatures. It deliberately does not include function-level comments; those require reading the file or a future docs/full-outline detail mode.
 
 Fill the gap in the human-written sections above `<!-- zr:files -->`:
 - **Purpose** — what the directory/module is for, in one sentence.

@@ -4,6 +4,7 @@ const build_options = @import("build_options");
 const Io = std.Io;
 const Dir = Io.Dir;
 const zrouter = @import("zrouter");
+const pipe = @import("pipe.zig");
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
@@ -37,8 +38,12 @@ pub fn main(init: std.process.Init) !void {
     var recursive_flag = false;
     var create_flag = false;
     var delete_file_flag = false;
+    var detail_mode: zrouter.desc.Mode = .summary;
+    var cmd_flag: ?[]const u8 = null;
 
-    for (args[2..]) |a| {
+    var arg_i: usize = 2;
+    while (arg_i < args.len) : (arg_i += 1) {
+        const a = args[arg_i];
         if (std.mem.eql(u8, a, "--json")) {
             json_flag = true;
         } else if (std.mem.eql(u8, a, "-r") or std.mem.eql(u8, a, "--recursive")) {
@@ -47,6 +52,25 @@ pub fn main(init: std.process.Init) !void {
             create_flag = true;
         } else if (std.mem.eql(u8, a, "--delete-file")) {
             delete_file_flag = true;
+        } else if (std.mem.eql(u8, a, "--outline")) {
+            detail_mode = .outline;
+        } else if (std.mem.startsWith(u8, a, "--detail=")) {
+            const value = a["--detail=".len..];
+            detail_mode = zrouter.desc.parseMode(value) orelse {
+                try stderr.print("error: unknown detail mode '{s}'\n", .{value});
+                try stderr.flush();
+                return error.InvalidArgument;
+            };
+        } else if (std.mem.eql(u8, a, "--cmd")) {
+            arg_i += 1;
+            if (arg_i >= args.len) {
+                try stderr.print("error: --cmd requires an argument\n", .{});
+                try stderr.flush();
+                return error.MissingArgument;
+            }
+            cmd_flag = args[arg_i];
+        } else if (std.mem.startsWith(u8, a, "--cmd=")) {
+            cmd_flag = a["--cmd=".len..];
         } else {
             try pos_args.append(arena, a);
         }
@@ -67,9 +91,11 @@ pub fn main(init: std.process.Init) !void {
             try stderr.flush();
             return error.MissingArgument;
         }
-        try cmdQuery(arena, io, global_config_paths, pos_args.items[0], stdout, stderr, json_flag);
+        try cmdQuery(arena, io, global_config_paths, pos_args.items[0], stdout, stderr, json_flag, detail_mode);
     } else if (std.mem.eql(u8, cmd, "deinit")) {
         try cmdDeinit(arena, io, global_config_paths, stdout, stderr, recursive_flag, delete_file_flag);
+    } else if (std.mem.eql(u8, cmd, "pipe")) {
+        try pipe.run(arena, io, stdout, cmd_flag);
     } else {
         try stderr.print("error: unknown command '{s}'\n\n", .{cmd});
         try usage(stderr);
@@ -132,9 +158,15 @@ fn usage(w: *Io.Writer) !void {
         \\    -r, --recursive Also strip blocks from every subdirectory CLAUDE.md
         \\    --delete-file   Delete subdirectory CLAUDE.md files entirely instead of stripping
         \\  query <path>      Show a file summary or filtered directory index
+        \\    --detail=outline Use a richer code-like outline for supported file types
+        \\    --outline       Alias for --detail=outline
+        \\  pipe              Read stdin, strip noisy lines, write to stdout
+        \\    --cmd <string>  Command string used to select the matching filter
         \\
         \\Global config: XDG_CONFIG_HOME/zrouter/config.toml, APPDATA/zrouter/config.toml, or ~/.config/zrouter/config.toml
         \\Project config: .zrouter/config.toml
+        \\Built-in filters: src/assets/filters.toml (embedded)
+        \\Project filters:  .zrouter/filters.toml
         \\
     , .{});
 }
@@ -294,6 +326,7 @@ const DirectoryIndex = struct {
     route_set: []const bool,
     routes: []const RouteEntry,
     inline_dirs: []const []const u8,
+    direct_inline_dirs: []const []const u8,
 };
 
 fn cmdRefresh(arena: std.mem.Allocator, io: Io, global_config_paths: []const []const u8, dir_path: []const u8, stdout: *Io.Writer, json: bool, recursive: bool, create: bool) !void {
@@ -375,7 +408,7 @@ fn buildDirectoryIndex(arena: std.mem.Allocator, io: Io, cfg: zrouter.config.Con
         try routes.append(arena, .{ .path = path, .routed = routed });
     }
 
-    const files = try zrouter.walker.listFilesForIndex(arena, io, dir_path, cfg.exclude, cfg.allow, routed_dirs.items, routing.inline_dirs);
+    const files = try zrouter.walker.listFilesForIndex(arena, io, dir_path, cfg.exclude, cfg.allow, routed_dirs.items, routing.inline_dirs, routing.direct_inline_dirs);
 
     var entries: std.ArrayList(zrouter.claude_md.FileEntry) = .empty;
     for (files) |f| {
@@ -392,6 +425,7 @@ fn buildDirectoryIndex(arena: std.mem.Allocator, io: Io, cfg: zrouter.config.Con
         .route_set = routing.route_set,
         .routes = routes.items,
         .inline_dirs = routing.inline_dirs,
+        .direct_inline_dirs = routing.direct_inline_dirs,
     };
 }
 
@@ -464,7 +498,7 @@ fn isDirectory(io: Io, path: []const u8) bool {
     return true;
 }
 
-fn cmdQuery(arena: std.mem.Allocator, io: Io, global_config_paths: []const []const u8, path: []const u8, stdout: *Io.Writer, stderr: *Io.Writer, json: bool) !void {
+fn cmdQuery(arena: std.mem.Allocator, io: Io, global_config_paths: []const []const u8, path: []const u8, stdout: *Io.Writer, stderr: *Io.Writer, json: bool, detail_mode: zrouter.desc.Mode) !void {
     const cfg = zrouter.config.load(arena, io, global_config_paths);
 
     if (isDirectory(io, path)) {
@@ -476,6 +510,7 @@ fn cmdQuery(arena: std.mem.Allocator, io: Io, global_config_paths: []const []con
                 .files = index.files,
                 .routes = index.routes,
                 .inline_dirs = index.inline_dirs,
+                .direct_inline_dirs = index.direct_inline_dirs,
             }, .{})});
         } else {
             try stdout.print("{s}/\n", .{path});
@@ -493,6 +528,10 @@ fn cmdQuery(arena: std.mem.Allocator, io: Io, global_config_paths: []const []con
                 try stdout.print("inline dirs:\n", .{});
                 for (index.inline_dirs) |d| try stdout.print("- `{s}/`\n", .{d});
             }
+            if (index.direct_inline_dirs.len > 0) {
+                try stdout.print("transparent dirs:\n", .{});
+                for (index.direct_inline_dirs) |d| try stdout.print("- `{s}/` direct files only\n", .{d});
+            }
             if (index.files.len > 0) {
                 try stdout.print("files:\n{s}", .{try zrouter.claude_md.buildFilesBlock(index.files, arena)});
             }
@@ -506,16 +545,19 @@ fn cmdQuery(arena: std.mem.Allocator, io: Io, global_config_paths: []const []con
         return;
     };
 
-    const desc = try zrouter.desc.extract(path, content, arena, cfg.known_files) orelse "";
+    const desc = try zrouter.desc.extractWithMode(path, content, arena, cfg.known_files, detail_mode) orelse "";
     const tokens = @as(usize, @intFromFloat(@as(f64, @floatFromInt(content.len)) / cfg.token_coefficient));
 
     if (json) {
         try stdout.print("{f}\n", .{std.json.fmt(.{
             .path = path,
             .kind = "file",
+            .detail = @tagName(detail_mode),
             .description = desc,
             .tokens = tokens,
         }, .{})});
+    } else if (detail_mode == .outline) {
+        try stdout.print("{s} (~{d} tok)\n{s}\n", .{ path, tokens, desc });
     } else {
         try stdout.print("{s} — {s} (~{d} tok)\n", .{ path, desc, tokens });
     }

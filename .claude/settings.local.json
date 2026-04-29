@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(zig build *)",
+      "Bash(printf \"anyzig: .minimum_zig_version '0.16.0'\\\\nanyzig: appdata 'C:\\\\\\\\test'\\\\nanyzig: zig '0.16.0' already exists\\\\nbuild success\\\\n\")",
+      "Bash(./zig-out/bin/zrouter pipe *)"
+    ]
+  }
+}

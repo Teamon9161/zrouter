@@ -11,6 +11,7 @@ pub const RoutingInfo = struct {
     paths: []const []const u8,
     route_set: []const bool,
     inline_dirs: []const []const u8,
+    direct_inline_dirs: []const []const u8,
 };
 
 fn charClassMatch(pattern: []const u8, start: usize, c: u8) ?struct { matched: bool, next: usize } {
@@ -161,7 +162,6 @@ fn isTransparentDir(name: []const u8, transparent_dirs: []const []const u8) bool
     return false;
 }
 
-
 fn pathStartsWithDir(path: []const u8, dir_path: []const u8) bool {
     if (dir_path.len == 0) return true;
     return path.len > dir_path.len and
@@ -199,12 +199,21 @@ pub fn listFiles(
     recursive: bool,
 ) ![]FileInfo {
     const inline_dirs: []const []const u8 = if (recursive) &.{""} else &.{};
-    return listFilesForIndex(allocator, io, dir_path, exclude, allow, &.{}, inline_dirs);
+    return listFilesForIndex(allocator, io, dir_path, exclude, allow, &.{}, inline_dirs, &.{});
 }
 
 fn isExplicitInlinePath(path: []const u8, inline_dirs: []const []const u8) bool {
     for (inline_dirs) |inline_dir| {
         if (pathStartsWithDir(path, inline_dir)) return true;
+    }
+    return false;
+}
+
+fn isDirectInlinePath(path: []const u8, direct_inline_dirs: []const []const u8) bool {
+    for (direct_inline_dirs) |inline_dir| {
+        if (!pathStartsWithDir(path, inline_dir)) continue;
+        const rest = path[inline_dir.len + 1 ..];
+        if (std.mem.indexOfScalar(u8, rest, '/') == null) return true;
     }
     return false;
 }
@@ -218,6 +227,7 @@ pub fn listFilesForIndex(
     allow: []const []const u8,
     routed_dirs: []const []const u8,
     inline_dirs: []const []const u8,
+    direct_inline_dirs: []const []const u8,
 ) ![]FileInfo {
     var dir = Dir.cwd().openDir(io, dir_path, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound => return &.{},
@@ -232,7 +242,12 @@ pub fn listFilesForIndex(
     while (try walker.next(io)) |entry| {
         if (entry.kind != .file) continue;
         const normalized_path = try normalizeSlashes(allocator, entry.path);
-        if (std.mem.indexOfScalar(u8, normalized_path, '/') != null and !isExplicitInlinePath(normalized_path, inline_dirs)) continue;
+        if (std.mem.indexOfScalar(u8, normalized_path, '/') != null and
+            !isExplicitInlinePath(normalized_path, inline_dirs) and
+            !isDirectInlinePath(normalized_path, direct_inline_dirs))
+        {
+            continue;
+        }
         if (isUnderRoutedDir(normalized_path, routed_dirs)) continue;
         if (hasIgnoredAncestor(allocator, normalized_path, exclude, allow)) continue;
         if (isIgnored(allocator, normalized_path, false, exclude, allow)) continue;
@@ -302,6 +317,7 @@ fn appendRoutingDirs(
     paths: *std.ArrayList([]const u8),
     route_set: *std.ArrayList(bool),
     inline_dirs: *std.ArrayList([]const u8),
+    direct_inline_dirs: *std.ArrayList([]const u8),
 ) !void {
     const scan_path = if (rel_path.len == 0) base_path else try std.fs.path.join(allocator, &.{ base_path, rel_path });
     var dir = Dir.cwd().openDir(io, scan_path, .{ .iterate = true }) catch return;
@@ -318,15 +334,15 @@ fn appendRoutingDirs(
         const child_path = try std.fs.path.join(allocator, &.{ base_path, child_rel });
         if (isIgnored(allocator, child_rel, true, exclude, allow)) continue;
 
-        if (hasClaudeMd(allocator, io, child_path)) {
-            try paths.append(allocator, child_rel);
-            try route_set.append(allocator, true);
+        if (isTransparentDir(entry.name, transparent_dirs)) {
+            try direct_inline_dirs.append(allocator, child_rel);
+            try appendRoutingDirs(allocator, io, base_path, child_rel, exclude, allow, transparent_dirs, inline_max_files, paths, route_set, inline_dirs, direct_inline_dirs);
             continue;
         }
 
-        if (isTransparentDir(entry.name, transparent_dirs)) {
-            try inline_dirs.append(allocator, child_rel);
-            try appendRoutingDirs(allocator, io, base_path, child_rel, exclude, allow, transparent_dirs, inline_max_files, paths, route_set, inline_dirs);
+        if (hasClaudeMd(allocator, io, child_path)) {
+            try paths.append(allocator, child_rel);
+            try route_set.append(allocator, true);
             continue;
         }
 
@@ -359,7 +375,8 @@ pub fn findSubdirsWithClaudeMd(
     var paths: std.ArrayList([]const u8) = .empty;
     var route_set: std.ArrayList(bool) = .empty;
     var inline_dirs: std.ArrayList([]const u8) = .empty;
-    try appendRoutingDirs(allocator, io, dir_path, "", exclude, allow, transparent_dirs, inline_max_files, &paths, &route_set, &inline_dirs);
+    var direct_inline_dirs: std.ArrayList([]const u8) = .empty;
+    try appendRoutingDirs(allocator, io, dir_path, "", exclude, allow, transparent_dirs, inline_max_files, &paths, &route_set, &inline_dirs, &direct_inline_dirs);
 
     var pairs: std.ArrayList(RoutingPair) = .empty;
     for (paths.items, route_set.items) |path, routed| {
@@ -374,8 +391,14 @@ pub fn findSubdirsWithClaudeMd(
         try route_set.append(allocator, pair.routed);
     }
     std.mem.sortUnstable([]const u8, inline_dirs.items, {}, pathLessThan);
+    std.mem.sortUnstable([]const u8, direct_inline_dirs.items, {}, pathLessThan);
 
-    return .{ .paths = paths.items, .route_set = route_set.items, .inline_dirs = inline_dirs.items };
+    return .{
+        .paths = paths.items,
+        .route_set = route_set.items,
+        .inline_dirs = inline_dirs.items,
+        .direct_inline_dirs = direct_inline_dirs.items,
+    };
 }
 
 /// Find all directories in a subtree that already contain CLAUDE.md, including root.

@@ -25,6 +25,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .imports = &.{
             .{ .name = "zrouter", .module = mod },
+            .{ .name = "toml", .module = toml_mod },
         },
     });
     exe_module.addOptions("build_options", options);
