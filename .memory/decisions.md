@@ -22,11 +22,18 @@ Recurring mistakes. Each entry: date, what went wrong, why, how to avoid.
 ## ADRs
 
 ### 2026-04-29 — Release self-update and skill installation UX
-- **Status:** active
+- **Status:** superseded by "Installers always surface skill installation choice"
 - **Context:** zrouter needs published binaries, a `zrouter update` command, and clear installation for the Claude Code skill that makes zrouter useful during agent workflows.
-- **Decision:** Publish GitHub release assets with checksums, embed installer scripts in the binary for self-update, and have installers offer zrouter skill installation only when the `skill` CLI is already available. Otherwise they print `skill -A @Teamon9161/zrouter/skill --claude` as the manual step.
+- **Decision:** Publish GitHub release assets with checksums, embed installer scripts in the binary for self-update, and have installers offer zrouter skill installation only when the `skill` CLI is already available. Otherwise they print the manual skill installation step.
 - **Alternatives:** Auto-download/install the `skill` CLI from the zrouter installer; rejected because it adds another trust boundary and more brittle cross-platform logic. Use raw GitHub URLs for skill installation; rejected as primary docs because the current `skill` parser explicitly supports `@owner/repo/path`.
 - **Consequences:** Binary install/update remains simple and auditable. Users still get clear guidance that Claude Code integration requires the zrouter skill, while environments without `skill` are not mutated unexpectedly.
+
+### 2026-04-29 — Installers always surface skill installation choice
+- **Status:** active
+- **Context:** Users who just installed or updated zrouter should not have to search for the Claude Code skill installation step.
+- **Decision:** Run the installer skill flow after both fresh installs and self-updates. In auto mode, interactive shells ask whether to install `@Teamon9161/zrouter/skill` immediately; yes runs `skill -A ...` and lets the skill CLI handle agent selection/defaults, while no, missing `skill`, or non-interactive execution prints the skill spec and command for manual installation.
+- **Alternatives:** Keep skipping the prompt during self-update; rejected because the install script is the right place to expose the integration path. Auto-install without asking; rejected because it mutates Claude Code skill state unexpectedly.
+- **Consequences:** The install/update path is one step longer in interactive shells, but users can still force behavior with `ZROUTER_INSTALL_SKILL=yes` or `ZROUTER_INSTALL_SKILL=no`.
 
 ### 2026-04-29 — Inline small directories into parent indexes
 - **Status:** active

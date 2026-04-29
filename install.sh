@@ -44,8 +44,10 @@ sha256_file() {
 
 print_skill_guidance() {
     echo ""
-    echo "To use zrouter from Claude Code, install the zrouter skill:"
-    echo "  skill -A $skill_spec --claude"
+    echo "zrouter skill path:"
+    echo "  $skill_spec"
+    echo "Install it later with:"
+    echo "  skill -A $skill_spec"
 }
 
 install_zrouter_skill() {
@@ -55,7 +57,7 @@ install_zrouter_skill() {
         return 1
     fi
 
-    skill -A "$skill_spec" --claude
+    skill -A "$skill_spec"
 }
 
 maybe_install_skill() {
@@ -76,7 +78,7 @@ maybe_install_skill() {
     fi
 
     if [ -r /dev/tty ] && [ -w /dev/tty ]; then
-        printf "Install the zrouter Claude Code skill now? [Y/n] " >/dev/tty
+        printf "Install the zrouter skill now? [Y/n] " >/dev/tty
         read answer </dev/tty || answer=""
         case "$answer" in
             n|N|no|NO|No)
@@ -179,8 +181,4 @@ case ":$PATH:" in
 esac
 
 echo "zrouter installed to $install_dir/zrouter"
-if [ "$install_skill" = "auto" ] && [ -n "$current_version" ]; then
-    :
-else
-    maybe_install_skill
-fi
+maybe_install_skill

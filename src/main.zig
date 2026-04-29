@@ -154,7 +154,7 @@ fn cmdUpdate(arena: std.mem.Allocator, io: Io, environ: std.process.Environ) !vo
 
     if (builtin.os.tag == .windows) {
         try exec(arena, io, &.{
-            "powershell.exe",  "-ExecutionPolicy",    "Bypass", "-NonInteractive", "-File", tmp_path,
+            "powershell.exe",  "-ExecutionPolicy",    "Bypass", "-File", tmp_path,
             "-CurrentVersion", build_options.version,
         });
     } else {
@@ -190,7 +190,7 @@ fn exec(arena: std.mem.Allocator, io: Io, argv: []const []const u8) !void {
     _ = arena;
     var child = try std.process.spawn(io, .{
         .argv = argv,
-        .stdin = .ignore,
+        .stdin = .inherit,
         .expand_arg0 = .expand,
     });
     const term = try child.wait(io);

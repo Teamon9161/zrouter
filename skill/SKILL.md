@@ -45,7 +45,7 @@ Outside the markers: human-owned; zrouter never touches.
 
 1. Detect stack from signature files (`build.zig`, `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, ...).
 2. Pre-fill the Stack section of root CLAUDE.md.
-3. **Ask** the user what Critical Rules they want. Don't invent rules.
+3. **Ask** the user whether there are project-specific Critical Rules. Keep this section short, leave it empty if there are none, and don't repeat global agent instructions.
 4. Decide subdirectories. Greenfield (≤2 source dirs) → root only. Brownfield → use `zrouter refresh . -r --create` and review the generated indexes before writing human sections.
 5. Create `.memory/` skeletons.
 6. Populate files/routing blocks using the refresh logic below.

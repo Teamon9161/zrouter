@@ -31,8 +31,10 @@ if ([string]::IsNullOrWhiteSpace($SkillSpec)) {
 
 function Write-SkillGuidance {
     Write-Host ""
-    Write-Host "To use zrouter from Claude Code, install the zrouter skill:"
-    Write-Host "  skill -A $SkillSpec --claude"
+    Write-Host "zrouter skill path:"
+    Write-Host "  $SkillSpec"
+    Write-Host "Install it later with:"
+    Write-Host "  skill -A $SkillSpec"
 }
 
 function Install-ZrouterSkill {
@@ -43,7 +45,7 @@ function Install-ZrouterSkill {
         return $false
     }
 
-    & skill -A $SkillSpec --claude
+    & skill -A $SkillSpec
     if ($LASTEXITCODE -ne 0) {
         throw "skill installation failed"
     }
@@ -68,7 +70,7 @@ function Maybe-InstallSkill {
     }
 
     if ([Environment]::UserInteractive) {
-        $Answer = Read-Host "Install the zrouter Claude Code skill now? [Y/n]"
+        $Answer = Read-Host "Install the zrouter skill now? [Y/n]"
         if ($Answer -match "^(n|N|no|NO|No)$") {
             Write-SkillGuidance
         } else {
@@ -182,9 +184,7 @@ try {
 
     Write-Host "zrouter installed to $(Join-Path $InstallDir "zrouter.exe")"
     Write-Host "Restart your terminal if zrouter is not found in PATH."
-    if ($InstallSkill -ne "auto" -or [string]::IsNullOrWhiteSpace($CurrentVersion)) {
-        Maybe-InstallSkill
-    }
+    Maybe-InstallSkill
 } finally {
     Remove-Item -LiteralPath $TempDir -Recurse -Force
 }
