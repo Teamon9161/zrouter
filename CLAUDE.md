@@ -19,10 +19,12 @@
 <!-- zr:files -->
 - `.gitignore` —  (~14 tok)
 - `PLAN.md` — zrouter 设计与实施计划 (~3196 tok)
-- `build.zig` — pub fn build (~340 tok)
-- `build.zig.zon` — Zig package manifest (~1125 tok)
+- `build.zig` — pub fn build (~443 tok)
+- `build.zig.zon` — Zig package manifest (~1141 tok)
+- `install.ps1` —  (~1510 tok)
+- `install.sh` —  (~1230 tok)
 - `skill/`
-  - `SKILL.md` — zrouter (~2254 tok)
+  - `SKILL.md` — zrouter (~2097 tok)
   - `configuration.md` — zrouter configuration (~1182 tok)
   - `templates.md` — zrouter templates (~761 tok)
 - `src/`
@@ -30,7 +32,7 @@
   - `claude_md.zig` — pub fn replaceBlock, ensureBlock, removeBlock, buildFilesBlock, buildRoutingBlock (~1371 tok)
   - `config.zig` — pub fn load (~1725 tok)
   - `desc.zig` — pub fn extract (~3756 tok)
-  - `main.zig` — pub fn main (~4927 tok)
+  - `main.zig` — pub fn main (~5675 tok)
   - `root.zig` —  (~49 tok)
   - `walker.zig` — pub fn listFiles, listFilesForIndex, findSubdirsWithClaudeMd (~4062 tok)
 <!-- /zr:files -->

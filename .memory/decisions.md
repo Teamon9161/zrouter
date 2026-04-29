@@ -21,6 +21,13 @@ Recurring mistakes. Each entry: date, what went wrong, why, how to avoid.
 
 ## ADRs
 
+### 2026-04-29 — Release self-update and skill installation UX
+- **Status:** active
+- **Context:** zrouter needs published binaries, a `zrouter update` command, and clear installation for the Claude Code skill that makes zrouter useful during agent workflows.
+- **Decision:** Publish GitHub release assets with checksums, embed installer scripts in the binary for self-update, and have installers offer zrouter skill installation only when the `skill` CLI is already available. Otherwise they print `skill -A @Teamon9161/zrouter/skill --claude` as the manual step.
+- **Alternatives:** Auto-download/install the `skill` CLI from the zrouter installer; rejected because it adds another trust boundary and more brittle cross-platform logic. Use raw GitHub URLs for skill installation; rejected as primary docs because the current `skill` parser explicitly supports `@owner/repo/path`.
+- **Consequences:** Binary install/update remains simple and auditable. Users still get clear guidance that Claude Code integration requires the zrouter skill, while environments without `skill` are not mutated unexpectedly.
+
 ### 2026-04-29 — Inline small directories into parent indexes
 - **Status:** active
 - **Context:** Full-tree `refresh -r --create` created many shallow CLAUDE.md files, causing extra Read round trips before Claude still had to read source files for edits.

@@ -1,14 +1,14 @@
 ---
 name: zrouter
 version: 0.1.0-phase1
-description: Per-directory CLAUDE.md with auto-maintained file indexes and routing. Use for setting up scoped agent context or checking it's up to date. Triggers on "zrouter init", "zrouter check", and "zr ..." shorthand.
+description: Per-directory CLAUDE.md with auto-maintained file indexes and routing. Use for setting up scoped agent context and keeping indexes fresh. Triggers on "zrouter init" and "zr ..." shorthand.
 ---
 
 # zrouter
 
 Splits one big CLAUDE.md into a small root + routed CLAUDE.md files for meaningful code directories. Each CLAUDE.md ends with auto-managed `<!-- zr:files -->` and `<!-- zr:routing -->` blocks, so a single read gives Claude local conventions, direct file summaries, and the next routing choices.
 
-The user types `init` once and `check` when they want a health report. Everything else — keeping the file index and routing fresh — happens automatically as Claude edits code or by running `zrouter refresh`.
+The user types `init` once. Everything else — keeping the file index and routing fresh — happens automatically as Claude edits code or by running `zrouter refresh`.
 
 ## The token-saving move
 
@@ -63,18 +63,6 @@ zrouter deinit -r --delete-file  Strip ./CLAUDE.md; delete all subdirectory CLAU
 ```
 
 `--delete-file` never deletes the root `./CLAUDE.md` — only subdirectory ones.
-
-### `check`
-
-Read-only report; **don't fix automatically**. List:
-- Files block stale: any file in `<dir>/` newer than the block, or files added/removed since last refresh
-- Root CLAUDE.md > 250 tokens (excluding routing)
-- Subdirectory CLAUDE.md > 300 tokens (excluding files block)
-- Subdirectory CLAUDE.md with no human-written content (no Purpose section — likely an unfilled stub)
-- Code directory without CLAUDE.md
-- CLAUDE.md whose directory has no files
-
-If the user wants the issues fixed, they ask explicitly — then apply the refresh logic below.
 
 ## Automatic behaviors (no user command — Claude does this while working)
 

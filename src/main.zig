@@ -1,4 +1,6 @@
 const std = @import("std");
+const builtin = @import("builtin");
+const build_options = @import("build_options");
 const Io = std.Io;
 const Dir = Io.Dir;
 const zrouter = @import("zrouter");
@@ -25,6 +27,11 @@ pub fn main(init: std.process.Init) !void {
     }
 
     const cmd = args[1];
+    if (std.mem.eql(u8, cmd, "--version") or std.mem.eql(u8, cmd, "-V")) {
+        try cmdVersion(stdout);
+        try stdout.flush();
+        return;
+    }
     var pos_args: std.ArrayList([]const u8) = .empty;
     var json_flag = false;
     var recursive_flag = false;
@@ -45,7 +52,11 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
-    if (std.mem.eql(u8, cmd, "init")) {
+    if (std.mem.eql(u8, cmd, "version")) {
+        try cmdVersion(stdout);
+    } else if (std.mem.eql(u8, cmd, "update")) {
+        try cmdUpdate(arena, io, init.minimal.environ);
+    } else if (std.mem.eql(u8, cmd, "init")) {
         try cmdInit(arena, io, global_config_paths, stdout, json_flag);
     } else if (std.mem.eql(u8, cmd, "refresh")) {
         const dir = if (pos_args.items.len > 0) pos_args.items[0] else ".";
@@ -111,6 +122,8 @@ fn usage(w: *Io.Writer) !void {
         \\Usage: zrouter <command> [args] [--json]
         \\
         \\Commands:
+        \\  version           Print zrouter version
+        \\  update            Update zrouter from the latest GitHub release
         \\  init              Create .zrouter/config.toml and .memory/ scaffolding
         \\  refresh [<dir>]   Update <!-- zr:files --> and <!-- zr:routing --> blocks
         \\    -r, --recursive Refresh every CLAUDE.md under <dir>
@@ -124,6 +137,67 @@ fn usage(w: *Io.Writer) !void {
         \\Project config: .zrouter/config.toml
         \\
     , .{});
+}
+
+// ── version/update ────────────────────────────────────────
+
+fn cmdVersion(stdout: *Io.Writer) !void {
+    try stdout.print("zrouter {s}\n", .{build_options.version});
+}
+
+fn cmdUpdate(arena: std.mem.Allocator, io: Io, environ: std.process.Environ) !void {
+    const tmp_path = try tempScriptPath(arena, io, environ);
+    defer Dir.deleteFileAbsolute(io, tmp_path) catch {};
+
+    const script = if (builtin.os.tag == .windows) build_options.install_ps1 else build_options.install_sh;
+    try Dir.writeFile(Dir.cwd(), io, .{ .sub_path = tmp_path, .data = script });
+
+    if (builtin.os.tag == .windows) {
+        try exec(arena, io, &.{
+            "powershell.exe",  "-ExecutionPolicy",    "Bypass", "-NonInteractive", "-File", tmp_path,
+            "-CurrentVersion", build_options.version,
+        });
+    } else {
+        try exec(arena, io, &.{ "sh", tmp_path, build_options.version });
+    }
+}
+
+fn tempScriptPath(arena: std.mem.Allocator, io: Io, environ: std.process.Environ) ![]const u8 {
+    var random_bytes: [8]u8 = undefined;
+    io.random(&random_bytes);
+    const suffix = std.mem.readInt(u64, &random_bytes, .little);
+    const filename = if (builtin.os.tag == .windows)
+        try std.fmt.allocPrint(arena, "zrouter-self-update-{x}.ps1", .{suffix})
+    else
+        try std.fmt.allocPrint(arena, "zrouter-self-update-{x}.sh", .{suffix});
+
+    if (builtin.os.tag == .windows) {
+        const tmp_dir = environ.getAlloc(arena, "TEMP") catch |err| switch (err) {
+            error.EnvironmentVariableMissing => return std.fs.path.join(arena, &.{ "C:\\Windows\\Temp", filename }),
+            else => return err,
+        };
+        return std.fs.path.join(arena, &.{ tmp_dir, filename });
+    }
+
+    const tmp_dir = environ.getAlloc(arena, "TMPDIR") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => "/tmp",
+        else => return err,
+    };
+    return std.fs.path.join(arena, &.{ tmp_dir, filename });
+}
+
+fn exec(arena: std.mem.Allocator, io: Io, argv: []const []const u8) !void {
+    _ = arena;
+    var child = try std.process.spawn(io, .{
+        .argv = argv,
+        .stdin = .ignore,
+        .expand_arg0 = .expand,
+    });
+    const term = try child.wait(io);
+    switch (term) {
+        .exited => |code| if (code != 0) return error.SelfUpdateFailed,
+        else => return error.SelfUpdateFailed,
+    }
 }
 
 // ── init ─────────────────────────────────────────────────
