@@ -2,3 +2,5 @@ references/
 .zig-cache/
 zig-out/
 .zrouter/
+zig-pkg/
+tests/

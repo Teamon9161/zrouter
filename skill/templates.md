@@ -16,7 +16,7 @@ Skeletons for files `init` creates. Brackets are filled in per project — don't
 <!-- ask the user during init; leave this comment if they have none -->
 
 ## zrouter
-- Reading an unknown file: first read the surrounding `<dir>/CLAUDE.md`'s `<!-- zr:files -->` block (or `zrouter query <path> --json` once the CLI ships).
+- Reading an unknown file: first consult the loaded/current directory's `<!-- zr:files -->` block; use `zrouter query <path> --json` only when the surrounding CLAUDE.md is not loaded or the file is outside the current routed context.
 - Editing in `<dir>/`: read `<dir>/CLAUDE.md` first; check `.memory/decisions.md` for ADRs and Do-Not-Repeat entries.
 - After editing: refresh that directory's files block. Log decisions to `.memory/decisions.md`, patterns to `.memory/patterns.md`, guesses to `.memory/inbox.md`.
 - `<!-- zr:files -->` and `<!-- zr:routing -->` blocks are tool-managed; everything else is yours.
@@ -43,6 +43,8 @@ Target: ≤ 250 tokens excluding the routing block.
 
 <!-- zr:files -->
 <!-- /zr:files -->
+<!-- zr:routing -->
+<!-- /zr:routing -->
 ```
 
 Target: ≤ 300 tokens excluding the files block.
@@ -66,6 +68,8 @@ Library and CLI entry points.
 - `main.zig` — main, testOne (~640 tok)
 - `root.zig` — printAnotherMessage (~140 tok)
 <!-- /zr:files -->
+<!-- zr:routing -->
+<!-- /zr:routing -->
 ```
 
 ## .memory/decisions.md

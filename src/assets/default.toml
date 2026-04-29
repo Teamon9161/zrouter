@@ -1,0 +1,72 @@
+# zrouter built-in defaults — embedded at compile time.
+# All list fields are extended (never replaced) by global and project config.
+# Scalars (token_coefficient, max_content_size, inline_max_files) are overridden by later layers.
+#
+# To extend globally or in .zrouter/config.toml:
+#
+#   respect_gitignore = true
+#   exclude = ["generated/", "fixtures/", "*.dat"]
+#   allow   = ["fixtures/keep.json"]
+#   known_files = [{name = "my_file.yaml", desc = "My config"}]
+
+# ── Routing shape ────────────────────────────────────────────────────────────
+
+inline_max_files = 12  # directories with <= N filtered subtree files are inlined into parent indexes
+respect_gitignore = true  # append supported .gitignore rules to exclude/allow
+
+# ── Extension / file allowlist (overrides excludes) ──────────────────────────
+
+allow = []   # gitignore-ish patterns that override exclude; e.g. ["schema.db"]
+
+# ── Transparent directories (skipped in routing; their children are promoted) ─
+
+transparent_dirs = ["src", "lib", "app", "pkg", "cmd", "internal"]
+
+# ── Gitignore-ish patterns to skip ───────────────────────────────────────────
+
+exclude = [
+  ".*/",                 # hidden/tooling dirs: .git, .claude, .zrouter, .pytest_cache, ...
+  "__*__/",              # Python dunder dirs: __pycache__, ...
+  "node_modules/",
+  "vendor/", "third_party/", "external/", "references/",
+  "target/", "zig-cache/", "zig-out/", "dist/", "build/", "out/",
+
+  # Images
+  "*.png", "*.jpg", "*.jpeg", "*.gif", "*.ico", "*.webp", "*.bmp", "*.tiff",
+  # Fonts / vector
+  "*.svg", "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
+  # Archives
+  "*.zip", "*.tar", "*.gz", "*.bz2", "*.xz", "*.7z", "*.rar", "*.zst",
+  # Binaries / native
+  "*.wasm", "*.exe", "*.dll", "*.so", "*.dylib", "*.o", "*.obj", "*.a", "*.lib",
+  # Media
+  "*.mp3", "*.mp4", "*.avi", "*.mov", "*.mkv", "*.webm", "*.ogg", "*.wav", "*.flac",
+  # Documents
+  "*.pdf", "*.doc", "*.docx", "*.xls", "*.xlsx", "*.ppt", "*.pptx",
+  # Databases
+  "*.db", "*.sqlite", "*.sqlite3",
+  # Bytecode / compiled
+  "*.py[co]", "*.class",
+]
+
+# ── Known-file descriptions ───────────────────────────────────────────────────
+# Project-level entries override same-named defaults (first-match wins).
+
+known_files = [
+  # Only files whose names are opaque or whose content can't be auto-extracted.
+  # Well-known files (Makefile, Dockerfile, .gitignore, README.md, build.zig …)
+  # are omitted — Claude recognises them by name alone.
+  {name = "build.zig.zon",     desc = "Zig package manifest"},
+  {name = "package.json",      desc = "npm package manifest"},
+  {name = "package-lock.json", desc = "npm lockfile"},
+  {name = "yarn.lock",         desc = "Yarn lockfile"},
+  {name = "pnpm-lock.yaml",    desc = "pnpm lockfile"},
+  {name = "Cargo.toml",        desc = "Rust project manifest"},
+  {name = "Cargo.lock",        desc = "Rust lockfile"},
+  {name = "go.mod",            desc = "Go module definition"},
+  {name = "go.sum",            desc = "Go dependency checksums"},
+  {name = "tsconfig.json",     desc = "TypeScript configuration"},
+  {name = "LICENSE",           desc = "License file"},
+  {name = "pyproject.toml",    desc = "Python project manifest"},
+  {name = "requirements.txt",  desc = "Python dependencies"},
+]
