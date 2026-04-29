@@ -182,7 +182,9 @@ try {
 
     Write-Host "zrouter installed to $(Join-Path $InstallDir "zrouter.exe")"
     Write-Host "Restart your terminal if zrouter is not found in PATH."
-    Maybe-InstallSkill
+    if ($InstallSkill -ne "auto" -or [string]::IsNullOrWhiteSpace($CurrentVersion)) {
+        Maybe-InstallSkill
+    }
 } finally {
     Remove-Item -LiteralPath $TempDir -Recurse -Force
 }

@@ -179,4 +179,8 @@ case ":$PATH:" in
 esac
 
 echo "zrouter installed to $install_dir/zrouter"
-maybe_install_skill
+if [ "$install_skill" = "auto" ] && [ -n "$current_version" ]; then
+    :
+else
+    maybe_install_skill
+fi
