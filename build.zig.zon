@@ -79,10 +79,10 @@
         "build.zig.zon",
         "install.sh",
         "install.ps1",
+        "README.md",
         "skill",
         "src",
         // For example...
         //"LICENSE",
-        //"README.md",
     },
 }
