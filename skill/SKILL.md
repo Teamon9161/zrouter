@@ -50,13 +50,38 @@ Outside the markers: human-owned; zrouter never touches.
 
 1. Detect stack from signature files (`build.zig`, `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, ...).
 2. Pre-fill the Stack section of root CLAUDE.md.
-3. Add a short Supported Extraction section to root CLAUDE.md based on the detected stack. If the project language is supported, mention `zrouter query <path> --outline` as a useful pre-read step. If it is not supported, say query is useful only for token count/header comments and skip outline unless the extension is supported.
-4. **Ask** the user whether there are project-specific Critical Rules. Keep this section short, leave it empty if there are none, and don't repeat global agent instructions.
-5. Decide subdirectories. Greenfield (≤2 source dirs) → root only. Brownfield → use `zrouter refresh . -r --create` and review the generated indexes before writing human sections.
-6. Create `.memory/` skeletons.
-7. Populate files/routing blocks using the refresh logic below.
-8. Inspect `<!-- zr:files -->` blocks for irrelevant generated, fixture, cache, binary, vendored, or benchmark-data paths. If the index looks noisy, stop and suggest `.gitignore`, `exclude`, or `allow` changes; rerun refresh before writing Purpose/Conventions. Do not paper over noisy indexes with prose.
-9. For each newly created subdirectory CLAUDE.md whose generated index looks relevant, write human content **above** the `<!-- zr:files -->` marker: Purpose (always, one sentence); Conventions and Gotchas where there's anything worth knowing before touching files here — one bullet is enough. Skip a section only if there's truly nothing to add.
+3. Add a short Supported Extraction section to root CLAUDE.md based on the detected stack.
+4. Add a root `Code Navigation` section so future sessions can use zrouter efficiently even when this skill does not trigger. Include this decision flow and maintenance reminder, adapted only for unsupported languages where outline is not reliable:
+   ```markdown
+   ## Code Navigation
+
+   Before reading unfamiliar files:
+   1. Check the loaded/current `<!-- zr:files -->` block first.
+   2. If the file or directory is outside the loaded routed context, run `zrouter query <path> --json`.
+   3. If the summary is too thin, run `zrouter query <path> --outline`.
+   4. Only read the file when summary/outline are insufficient.
+
+   After adding, deleting, or moving files, run `zrouter refresh <dir>` for the affected directory; if routed CLAUDE.md files were created or removed, run `zrouter refresh <parent>` or `zrouter refresh . -r`.
+   ```
+   Keep this guidance in human-owned CLAUDE.md content, not inside the generated marker blocks, because relying on the zrouter skill to trigger later wastes tokens and is less reliable than durable project instructions.
+5. Add a root `Project Memory` section, borrowing HAM's useful operating rules but keeping it lighter than HAM. Include this guidance:
+   ```markdown
+   ## Project Memory
+
+   Use `.memory/` for durable project knowledge that is not obvious from current code or git history:
+   - `.memory/decisions.md` — ADRs and do-not-repeat decisions. Check before architectural or behavior changes; append new decisions and mark old ones `[SUPERSEDED]` instead of overwriting.
+   - `.memory/patterns.md` — reusable code patterns. Check before implementing common functionality; update when a pattern becomes reusable.
+   - `.memory/inbox.md` — uncertain inferences. Never treat as canonical or promote without user confirmation.
+
+   After work, update relevant CLAUDE.md files when conventions or routing context change, and update `.memory/` only for durable decisions/patterns/inferences. Never record secrets, credentials, or user data.
+   ```
+   Keep this in root CLAUDE.md so future sessions do not need the zrouter skill to trigger just to remember memory maintenance.
+6. **Ask** the user whether there are project-specific Critical Rules. Keep this section short, leave it empty if there are none, and don't repeat global agent instructions.
+7. Decide subdirectories. Greenfield (≤2 source dirs) → root only. Brownfield → use `zrouter refresh . -r --create` and review the generated indexes before writing human sections.
+8. Create `.memory/` skeletons.
+9. Populate files/routing blocks using the refresh logic below.
+10. Inspect `<!-- zr:files -->` blocks for irrelevant generated, fixture, cache, binary, vendored, or benchmark-data paths. If the index looks noisy, stop and suggest `.gitignore`, `exclude`, or `allow` changes; rerun refresh before writing Purpose/Conventions. Do not paper over noisy indexes with prose.
+11. For each newly created subdirectory CLAUDE.md whose generated index looks relevant, write human content **above** the `<!-- zr:files -->` marker: Purpose (always, one sentence); Conventions and Gotchas where there's anything worth knowing before touching files here — one bullet is enough. Skip a section only if there's truly nothing to add.
 
 ### `deinit`
 
